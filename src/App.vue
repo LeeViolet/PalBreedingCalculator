@@ -1,12 +1,18 @@
 <script setup>
+import { ref, provide } from "vue";
+
 import pals from "./pals.json";
 import BestMatch from "./BestMatch.vue";
-console.log(pals);
+import Toast from "./components/Toast.vue";
+
+const toastRef = ref(null);
+provide("toast", toastRef);
 </script>
 
 <template>
     <div class="bg-sky-900 min-h-screen">
         <BestMatch />
+        <Toast ref="toastRef" />
     </div>
 </template>
 
