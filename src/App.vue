@@ -1,10 +1,13 @@
 <script setup>
 import pals from "./pals.json";
+import BestMatch from "./BestMatch.vue";
 console.log(pals);
 </script>
 
 <template>
-    <div></div>
+    <div class="bg-sky-900 min-h-screen">
+        <BestMatch />
+    </div>
 </template>
 
 <style scoped>
