@@ -1,10 +1,9 @@
 <script setup>
 import { ref, inject, computed } from "vue";
 import pals from "./data/pals.js";
+import combos from "./data/combos.js";
 import palCombos from "./data/palCombos.js";
 import DropDown from "./components/DropDown.vue";
-
-console.log(palCombos);
 
 const toast = inject("toast");
 
@@ -29,12 +28,11 @@ function handleSelectTargetPal(item) {
     targetPalDropDown.value.changeSearchValue(item.palNameCN);
 }
 function handleSelectBasePal(palNameEN) {
-    if (selectedBasePals.value.includes(palNameEN)) {
-        selectedBasePals.value = selectedBasePals.value.filter(
-            (pal) => pal !== palNameEN
-        );
-    } else {
+    const i = selectedBasePals.value.indexOf(palNameEN);
+    if (i === -1) {
         selectedBasePals.value.push(palNameEN);
+    } else {
+        selectedBasePals.value.splice(i, 1);
     }
 }
 
@@ -69,6 +67,26 @@ function handleCalculate() {
      * 1. 查找目标帕鲁的配种公式
      *
      */
+    const targetCombos = combos[targetPal.value];
+    for (const c of targetCombos) {
+        // 直接匹配
+        const directRes = [];
+        for (const p of selectedBasePals.value) {
+            if (p === c.a) {
+                directRes.push(p);
+                if (directRes.length === 2) break;
+            }
+            if (p === c.b) {
+                directRes.push(p);
+                if (directRes.length === 2) break;
+            }
+        }
+        if (directRes.length === 2) {
+            // 可以直接繁殖
+            console.log(directRes);
+            break;
+        }
+    }
 }
 </script>
 
