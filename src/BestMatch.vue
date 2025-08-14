@@ -1,19 +1,16 @@
 <script setup>
-import { ref, inject } from "vue";
-import pals from "./pals.json";
+import { ref, inject, computed } from "vue";
+import pals from "./data/pals.js";
+import palCombos from "./data/palCombos.js";
 import DropDown from "./components/DropDown.vue";
 
-const selectedBasePals = ref([]);
+console.log(palCombos);
 
-function handleSelectBasePal(item) {
-    if (selectedBasePals.value.some(el => el.palNameEN === item.palNameEN)) {
-        selectedBasePals.value = selectedBasePals.value.filter(
-            el => el.palNameEN !== item.palNameEN
-        );
-    } else {
-        selectedBasePals.value.push(item);
-    }
-}
+const toast = inject("toast");
+
+const palList = Object.values(pals);
+
+const selectedBasePals = ref([]);
 
 function filterFn(item, searchValue) {
     return (
@@ -24,254 +21,64 @@ function filterFn(item, searchValue) {
 
 const targetPalDropDown = ref(null);
 
-const targetPal = ref({});
+const targetPal = ref("");
 
 function handleSelectTargetPal(item) {
-    targetPal.value = item;
-    targetPalDropDown.value.changeSearchValue(
-        item.palNameCN + "(" + item.fecundity + ")"
-    );
+    targetPal.value = item.palNameEN;
+
+    targetPalDropDown.value.changeSearchValue(item.palNameCN);
+}
+function handleSelectBasePal(palNameEN) {
+    if (selectedBasePals.value.includes(palNameEN)) {
+        selectedBasePals.value = selectedBasePals.value.filter(
+            (pal) => pal !== palNameEN
+        );
+    } else {
+        selectedBasePals.value.push(palNameEN);
+    }
 }
 
-const toast = inject("toast");
+const listType = ref("all");
+const showedPalList = computed(() => {
+    if (listType.value === "all") {
+        return palList;
+    } else if (listType.value === "owned") {
+        return palList.filter((item) =>
+            selectedBasePals.value.includes(item.palNameEN)
+        );
+    } else if (listType.value === "unowned") {
+        return palList.filter(
+            (item) => !selectedBasePals.value.includes(item.palNameEN)
+        );
+    }
+});
+function handleChangeShowList(type) {
+    listType.value = type;
+}
 
 function handleCalculate() {
-    if (selectedBasePals.value.length === 0) {
-        toast.value.show("请选择已拥有的帕鲁");
+    if (selectedBasePals.value.length < 2) {
+        toast.value.show("请选择至少2个帕鲁");
         return;
     }
-    if (!targetPal.value.palNameEN) {
+    if (!targetPal.value) {
         toast.value.show("请选择要繁殖的帕鲁");
         return;
     }
-    // 帕鲁繁殖公式：(父fecundity + 母fecundity + 1) / 2 为目标 fecundity
-    // 如果计算值有多个最接近的目标值，取fecundity大的
-    const targetFecundity = targetPal.value.fecundity;
-    const targetPalIndex = pals.findIndex(
-        el => el.palNameEN === targetPal.value.palNameEN
-    );
-
-    // 1. 计算已经选择的帕鲁中没有没满足的
-    for (let i = 0; i < selectedBasePals.value.length; ++i) {
-        let flag = null;
-        for (let j = i; j < selectedBasePals.value.length; ++j) {
-            const res = generate(
-                selectedBasePals.value[i],
-                selectedBasePals.value[j]
-            );
-            if (res.palNameEN === targetPal.value.palNameEN) {
-                flag = j;
-                break;
-            }
-        }
-        if (flag !== null) {
-            toast.value.show(
-                selectedBasePals.value[i].palNameCN +
-                    "和" +
-                    selectedBasePals.value[flag].palNameCN
-            );
-
-            return;
-        }
-    }
-    toast.value.show("当前已选择的帕鲁无法繁殖出目标帕鲁");
-}
-
-function generate(a, b) {
-    const targetFecundity = (a.fecundity + b.fecundity + 1) / 2;
-    // 使用二分查找
-    let left = 0;
-    let right = pals.length - 1;
-    let result = null;
-
-    while (left <= right) {
-        const mid = Math.floor((left + right) / 2);
-        const midFecundity = pals[mid].fecundity;
-
-        if (midFecundity === targetFecundity) {
-            result = mid;
-            break;
-        } else if (midFecundity < targetFecundity) {
-            left = mid + 1;
-        } else {
-            right = mid - 1;
-        }
-    }
-
-    if (result !== null) {
-        // 精准找到目标
-        return pals[result];
-    } else {
-        // 找到最接近的目标值
-        if (left >= pals.length) {
-            // 取 right 和左右的值
-            let diff = Math.abs(pals[right].fecundity - targetFecundity);
-            let minIndex = right;
-
-            if (right > 0) {
-                const diffLeft = Math.abs(
-                    pals[minIndex - 1].fecundity - targetFecundity
-                );
-                if (diffLeft < diff) {
-                    minIndex = minIndex - 1;
-                    diff = diffLeft;
-                } else if (diffLeft === diff) {
-                    if (
-                        pals[minIndex - 1].fecundity > pals[minIndex].fecundity
-                    ) {
-                        minIndex = minIndex - 1;
-                        diff = diffLeft;
-                    } else if (
-                        pals[minIndex - 1].fecundity ===
-                        pals[minIndex].fecundity
-                    ) {
-                        toast.value.show(
-                            "找到多个最接近的目标值，取fecundity大的"
-                        );
-                    }
-                }
-            }
-            if (right < pals.length - 1) {
-                const diffRight = Math.abs(
-                    pals[right + 1].fecundity - targetFecundity
-                );
-                if (diffRight < diff) {
-                    minIndex = right + 1;
-                    diff = diffRight;
-                } else if (diffRight === diff) {
-                    if (
-                        pals[minIndex + 1].fecundity > pals[minIndex].fecundity
-                    ) {
-                        minIndex = right + 1;
-                        diff = diffRight;
-                    } else if (
-                        pals[minIndex + 1].fecundity ===
-                        pals[minIndex].fecundity
-                    ) {
-                        toast.value.show(
-                            "找到多个最接近的目标值，取fecundity大的"
-                        );
-                    }
-                }
-            }
-            return pals[minIndex];
-        } else if (right < 0) {
-            // 取 left 和左右的值
-            let diff = Math.abs(pals[left].fecundity - targetFecundity);
-            let minIndex = left;
-            if (left > 0) {
-                const diffLeft = Math.abs(
-                    pals[minIndex - 1].fecundity - targetFecundity
-                );
-                if (diffLeft < diff) {
-                    minIndex = minIndex - 1;
-                    diff = diffLeft;
-                } else if (diffLeft === diff) {
-                    if (
-                        pals[minIndex - 1].fecundity > pals[minIndex].fecundity
-                    ) {
-                        minIndex = minIndex - 1;
-                        diff = diffLeft;
-                    } else if (
-                        pals[minIndex - 1].fecundity ===
-                        pals[minIndex].fecundity
-                    ) {
-                        toast.value.show(
-                            "找到多个最接近的目标值，取fecundity大的"
-                        );
-                    }
-                }
-            }
-            if (left < pals.length - 1) {
-                const diffRight = Math.abs(
-                    pals[left + 1].fecundity - targetFecundity
-                );
-                if (diffRight < diff) {
-                    minIndex = left + 1;
-                    diff = diffRight;
-                } else if (diffRight === diff) {
-                    if (
-                        pals[minIndex + 1].fecundity > pals[minIndex].fecundity
-                    ) {
-                        minIndex = left + 1;
-                        diff = diffRight;
-                    } else if (
-                        pals[minIndex + 1].fecundity ===
-                        pals[minIndex].fecundity
-                    ) {
-                        toast.value.show(
-                            "找到多个最接近的目标值，取fecundity大的"
-                        );
-                    }
-                }
-            }
-            return pals[minIndex];
-        } else {
-            // 取 left 和 right 的值
-            const diff = Math.abs(pals[left].fecundity - targetFecundity);
-            const diff2 = Math.abs(pals[right].fecundity - targetFecundity);
-            if (diff < diff2) {
-                return pals[left];
-            } else if (diff > diff2) {
-                return pals[right];
-            } else {
-                if (pals[left].fecundity > pals[right].fecundity) {
-                    return pals[left];
-                } else if (pals[left].fecundity < pals[right].fecundity) {
-                    return pals[right];
-                } else {
-                    toast.value.show("找到多个最接近的目标值，取fecundity大的");
-                }
-            }
-        }
-    }
+    /**
+     * 1. 查找目标帕鲁的配种公式
+     *
+     */
 }
 </script>
 
 <template>
     <div class="best-match-wrap">
-        <div class="flex justify-around items-center">
-            <DropDown
-                class="w-64"
-                :list="pals"
-                :filter="filterFn"
-                placeholder="请选择已拥有的帕鲁"
-            >
-                <template #default="{ item }">
-                    <div
-                        class="flex items-center justify-between px-4 py-3 hover:bg-neutral-50 cursor-pointer"
-                        @click="handleSelectBasePal(item)"
-                    >
-                        <div class="flex items-center">
-                            <img
-                                class="w-10 h-10 mr-4 rounded-full"
-                                :src="`/${item.palNameEN}.png`"
-                            />
-                            <span>{{ item.palNameCN }}</span>
-                        </div>
-                        <Transition
-                            name="check"
-                            enter-active-class="transition-all duration-300 ease-out"
-                            leave-active-class="transition-all duration-200 ease-in"
-                            enter-from-class="opacity-0 scale-0"
-                            leave-to-class="opacity-0 scale-0"
-                        >
-                            <i
-                                v-if="
-                                    selectedBasePals.some(
-                                        el => el.palNameEN === item.palNameEN
-                                    )
-                                "
-                                class="fa fa-check text-green-500"
-                            ></i>
-                        </Transition>
-                    </div>
-                </template>
-            </DropDown>
+        <div class="p-4 flex items-center">
             <DropDown
                 ref="targetPalDropDown"
                 class="w-64"
-                :list="pals"
+                :list="palList"
                 :filter="filterFn"
                 placeholder="请选择要繁殖的帕鲁"
             >
@@ -295,7 +102,7 @@ function generate(a, b) {
                             leave-to-class="opacity-0 scale-0"
                         >
                             <i
-                                v-if="targetPal.palNameEN === item.palNameEN"
+                                v-if="targetPal === item.palNameEN"
                                 class="fa fa-check text-green-500"
                             ></i>
                         </Transition>
@@ -303,37 +110,58 @@ function generate(a, b) {
                 </template>
             </DropDown>
             <button
-                class="p-3 bg-white rounded-lg cursor-pointer hover:bg-[#eee] active:bg-[#ddd]"
+                class="ml-4 p-3 bg-white rounded-lg cursor-pointer hover:bg-[#eee] active:bg-[#ddd]"
                 @click="handleCalculate"
             >
                 开始计算
             </button>
         </div>
-        <!-- 已拥有的帕鲁 -->
-        <div class="mt-4 text-white">
-            <span>已拥有的帕鲁：</span>
-        </div>
-        <div class="mt-4 flex flex-wrap gap-2">
-            <TransitionGroup
-                name="pal-item"
-                enter-active-class="transition-all duration-300 ease-out"
-                leave-active-class="transition-all duration-200 ease-in"
-                enter-from-class="opacity-0 scale-90 translate-y-2"
-                leave-to-class="opacity-0 scale-90 translate-y-2"
-            >
-                <div
-                    v-for="item in selectedBasePals"
-                    :key="item.palNameEN"
-                    class="w-40 flex items-center justify-center bg-white border border-transparent rounded-lg p-2"
-                >
-                    <img
-                        class="w-10 h-10 mr-4 rounded-full"
-                        :src="`/${item.palNameEN}.png`"
-                    />
+        <!-- 计算结果 -->
 
-                    <span>{{ item.palNameCN }}({{ item.fecundity }})</span>
-                </div>
-            </TransitionGroup>
+        <!-- 已拥有的帕鲁 -->
+        <div class="p-4">
+            <div>
+                <span class="text-white">已拥有的帕鲁：</span>
+                <button
+                    class="ml-2 p-2 text-black bg-white rounded-lg cursor-pointer hover:bg-[#eee] active:bg-[#ddd]"
+                    @click="handleChangeShowList('owned')"
+                >
+                    显示已拥有的帕鲁
+                </button>
+
+                <button
+                    class="ml-2 p-2 text-black bg-white rounded-lg cursor-pointer hover:bg-[#eee] active:bg-[#ddd]"
+                    @click="handleChangeShowList('unowned')"
+                >
+                    显示未拥有的帕鲁
+                </button>
+                <button
+                    class="ml-2 p-2 text-black bg-white rounded-lg cursor-pointer hover:bg-[#eee] active:bg-[#ddd]"
+                    @click="handleChangeShowList('all')"
+                >
+                    显示所有帕鲁
+                </button>
+            </div>
+            <div class="mt-4 p-4 flex flex-wrap gap-2">
+                <TransitionGroup name="list">
+                    <div
+                        v-for="item in showedPalList"
+                        :key="item.palNameEN"
+                        class="relative w-40 flex items-center bg-white border border-transparent rounded-lg p-2 cursor-pointer hover:bg-white-500"
+                        @click="handleSelectBasePal(item.palNameEN)"
+                    >
+                        <img
+                            class="w-10 h-10 mr-4 rounded-full"
+                            :src="`/${item.palNameEN}.png`"
+                        />
+                        <span>{{ item.palNameCN }}</span>
+                        <i
+                            v-if="selectedBasePals.includes(item.palNameEN)"
+                            class="absolute right-0 top-0 fa fa-check text-green-500"
+                        ></i>
+                    </div>
+                </TransitionGroup>
+            </div>
         </div>
     </div>
 </template>

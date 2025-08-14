@@ -11,15 +11,14 @@ provide("toast", toastRef);
 
 const tabs = [NormalPair, BestMatch];
 const tabIndex = ref(1);
-const tab = NormalPair;
 </script>
 
 <template>
     <div class="bg-sky-900 min-h-screen">
-        <div class="flex justify-center shadow-[0_4px_20px_rgba(0,0,0,0.1)] items-center">
+        <div class="mb-8 flex justify-center shadow-[0_4px_20px_rgba(0,0,0,0.1)] items-center">
             <div class="text-gray-200 px-8 py-6 transition-all duration-200 hover:bg-sky-800 cursor-pointer"
                 :class="{ 'bg-sky-700': tabIndex === 0 }" @click="tabIndex = 0">普通匹配</div>
-            <div class="text-gray-200 px-8 py-6 transition-all duration-200 hover:bg-sky-700 cursor-pointer"
+            <div class="text-gray-200 px-8 py-6 transition-all duration-200 hover:bg-sky-800 cursor-pointer"
                 :class="{ 'bg-sky-700': tabIndex === 1 }" @click="tabIndex = 1">路线匹配</div>
         </div>
         <Transition name="check" enter-active-class="transition-all duration-300 ease-out"
