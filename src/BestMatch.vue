@@ -63,29 +63,49 @@ function handleCalculate() {
         toast.value.show("请选择要繁殖的帕鲁");
         return;
     }
-    /**
-     * 1. 查找目标帕鲁的配种公式
-     *
-     */
+
+    // 目标帕鲁的组合列表
     const targetCombos = combos[targetPal.value];
+    // 可以直接匹配的帕鲁列表
+    let directPalList = [];
+    // 匹配到已选择的帕鲁列表
+    let matchedSelectedPalList = [];
+    // 直接匹配的组合列表
+    const directCombosList = [];
     for (const c of targetCombos) {
-        // 直接匹配
         const directRes = [];
         for (const p of selectedBasePals.value) {
             if (p === c.a) {
                 directRes.push(p);
                 if (directRes.length === 2) break;
+                matchedSelectedPalList.push(c.a);
             }
             if (p === c.b) {
                 directRes.push(p);
                 if (directRes.length === 2) break;
+                matchedSelectedPalList.push(c.b);
             }
         }
         if (directRes.length === 2) {
             // 可以直接繁殖
-            console.log(directRes);
-            break;
+            directCombosList.push(c);
+            continue;
         }
+        directPalList.push(c.a);
+        directPalList.push(c.b);
+    }
+
+    // TODO 可以直接繁殖
+    if (directCombosList.length !== 0) {
+        console.log(directCombosList);
+    }
+
+    // 去重
+    directPalList = [...new Set(directPalList)];
+    matchedSelectedPalList = [...new Set(matchedSelectedPalList)];
+
+    if (matchedSelectedPalList.length !== 0) {
+        
     }
 }
 </script>
